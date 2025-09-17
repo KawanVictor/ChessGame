@@ -1,16 +1,16 @@
 package model.pieces;
 
-import model.board.Board;
-import model.board.Position;
 import java.util.ArrayList;
 import java.util.List;
+import model.board.Board;
+import model.board.Position;
 
 public class Knight extends Piece {
-    
+
     public Knight(Board board, boolean isWhite) {
         super(board, isWhite);
     }
-    
+
     @Override
     public List<Position> getPossibleMoves() {
         List<Position> moves = new ArrayList<>();
@@ -20,7 +20,7 @@ public class Knight extends Piece {
             {1, -2},  {1, 2},
             {2, -1},  {2, 1}
         };
-        
+
         for (int[] jump : jumps) {
             Position newPos = new Position(position.getRow() + jump[0], position.getColumn() + jump[1]);
             if (newPos.isValid()) {
@@ -32,7 +32,7 @@ public class Knight extends Piece {
         }
         return moves;
     }
-    
+
     @Override
     public String getSymbol() { return "N"; }
 }
