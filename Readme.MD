@@ -2,8 +2,6 @@
 
 Aluno: Kawan Victor Cavalcante
 
-RA: 24151609-2
-
 Curso: Análise e Desenvolvimento de Sistemas
 
 Instituição: Faculdade Unicesumar
@@ -16,6 +14,8 @@ Professora: Thayse Duarte de Oliveira
 
 Este projeto consiste em um sistema de xadrez com interface gráfica desenvolvido como trabalho prático para a disciplina de Programação Orientada a Objetos.
 O sistema permite partidas entre dois jogadores ou jogador contra a IA (níveis aleatório e minimax), aplica as regras oficiais de movimentação (incluindo roque, en passant e promoção), detecta xeque, xeque-mate e empates, e mantém histórico de movimentos com opção de desfazer.
+
+![Partida em andamento, com o bispo selecionado e seus lances legais destacados](docs/screenshot.png)
 
 # Tecnologias e Ferramentas Utilizadas
 
@@ -116,6 +116,7 @@ src/controller     Game (regras e estado da partida) e ChessAI (IA)
 src/view           ChessGUI (interface Swing)
 test/controller    GameTest (testes das regras e da IA)
 resources          imagens das peças
+docs               captura de tela usada neste README
 ```
 
 # Detalhes Técnicos
