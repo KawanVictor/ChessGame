@@ -1,16 +1,9 @@
 # Projeto: Sistema de Xadrez em Java
 
 Aluno: Kawan Victor Cavalcante
-
-RA: 24151609-2
-
 Curso: Análise e Desenvolvimento de Sistemas
-
 Instituição: Faculdade Unicesumar
-
 Matéria: Programação Orientada a Objetos
-
-Professora: Thayse Duarte de Oliveira
 
 # Descrição do Projeto
 
