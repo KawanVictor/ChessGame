@@ -10,7 +10,7 @@ public class Board {
     }
 
     public Piece getPieceAt(Position position) {
-        if (!position.isValid()) return null;
+        if (position == null || !position.isValid()) return null;
         return pieces[position.getRow()][position.getColumn()];
     }
 
@@ -42,7 +42,7 @@ public class Board {
             for (int col = 0; col < 8; col++) {
                 Piece piece = pieces[row][col];
                 if (piece != null && piece.isWhite() == byWhite) {
-                    if (piece.canMoveTo(position)) return true;
+                    if (piece.attacks(position)) return true;
                 }
             }
         }

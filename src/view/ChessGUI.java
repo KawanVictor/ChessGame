@@ -12,10 +12,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ChessGUI extends JFrame {
+    private static final int ICON_SIZE = 52;
+
     private Game game;
     private ChessAI ai;
     private boolean playAgainstAI;
     private boolean aiPlaysWhite;
+    private ChessAI.Difficulty aiDifficulty;
     private JPanel boardPanel;
     private JButton[][] squares;
     private Map<String, ImageIcon> pieceIcons;
@@ -26,7 +29,8 @@ public class ChessGUI extends JFrame {
     public ChessGUI() {
         setLookAndFeel();
         game = new Game();
-        ai = new ChessAI(game, ChessAI.Difficulty.RANDOM);
+        aiDifficulty = ChessAI.Difficulty.RANDOM;
+        ai = new ChessAI(game, aiDifficulty);
         playAgainstAI = false;
         aiPlaysWhite = false;
         initializeGUI();
@@ -94,27 +98,11 @@ public class ChessGUI extends JFrame {
         JPanel controlPanel = new JPanel();
         controlPanel.setBackground(new Color(30,30,38));
         JButton newGameButton = createModernButton("Novo Jogo");
-        newGameButton.addActionListener(e -> {
-            game = new Game();
-            ai = new ChessAI(game, ChessAI.Difficulty.RANDOM);
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: Brancas");
-            statusLabel.setText("Novo jogo iniciado!");
-        });
+        newGameButton.addActionListener(e -> startNewGame("Novo jogo iniciado!"));
         controlPanel.add(newGameButton);
 
         JButton undoButton = createModernButton("Desfazer");
-        undoButton.addActionListener(e -> {
-            if (game.undoLastMove()) {
-                updateBoardDisplay();
-                updateMoveHistory();
-                turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
-                statusLabel.setText("Último movimento desfeito.");
-            } else {
-                statusLabel.setText("Nada a desfazer!");
-            }
-        });
+        undoButton.addActionListener(e -> undoMove());
         controlPanel.add(undoButton);
 
         add(controlPanel, BorderLayout.SOUTH);
@@ -128,12 +116,7 @@ public class ChessGUI extends JFrame {
         JMenuItem humanVsHuman = new JMenuItem("Humano vs Humano");
         humanVsHuman.addActionListener(e -> {
             playAgainstAI = false;
-            game = new Game();
-            ai = new ChessAI(game, ChessAI.Difficulty.RANDOM);
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: Brancas");
-            statusLabel.setText("Modo: Humano vs Humano.");
+            startNewGame("Modo: Humano vs Humano.");
         });
         gameMenu.add(humanVsHuman);
 
@@ -141,12 +124,8 @@ public class ChessGUI extends JFrame {
         humanVsAiRandom.addActionListener(e -> {
             playAgainstAI = true;
             aiPlaysWhite = false;
-            game = new Game();
-            ai = new ChessAI(game, ChessAI.Difficulty.RANDOM);
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: Brancas");
-            statusLabel.setText("Modo: Humano vs IA Simples.");
+            aiDifficulty = ChessAI.Difficulty.RANDOM;
+            startNewGame("Modo: Humano vs IA Simples.");
         });
         gameMenu.add(humanVsAiRandom);
 
@@ -154,12 +133,8 @@ public class ChessGUI extends JFrame {
         humanVsAiMinimax.addActionListener(e -> {
             playAgainstAI = true;
             aiPlaysWhite = false;
-            game = new Game();
-            ai = new ChessAI(game, ChessAI.Difficulty.MINIMAX);
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: Brancas");
-            statusLabel.setText("Modo: Humano vs IA Minimax.");
+            aiDifficulty = ChessAI.Difficulty.MINIMAX;
+            startNewGame("Modo: Humano vs IA Minimax.");
         });
         gameMenu.add(humanVsAiMinimax);
 
@@ -167,16 +142,8 @@ public class ChessGUI extends JFrame {
         aiVsHuman.addActionListener(e -> {
             playAgainstAI = true;
             aiPlaysWhite = true;
-            game = new Game();
-            ai = new ChessAI(game, ChessAI.Difficulty.RANDOM);
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: Pretas");
-            statusLabel.setText("Modo: IA começa!");
-            ai.makeMove();
-            updateBoardDisplay();
-            updateMoveHistory();
-            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+            aiDifficulty = ChessAI.Difficulty.RANDOM;
+            startNewGame("Modo: IA começa!");
         });
         gameMenu.add(aiVsHuman);
 
@@ -185,6 +152,31 @@ public class ChessGUI extends JFrame {
 
         setLocationRelativeTo(null);
         setVisible(true);
+    }
+
+    // Reinicia a partida mantendo o modo e a dificuldade atuais
+    private void startNewGame(String status) {
+        game = new Game();
+        ai = new ChessAI(game, aiDifficulty);
+        updateBoardDisplay();
+        updateMoveHistory();
+        updateTurnLabel();
+        statusLabel.setText(status);
+        scheduleAiMove();
+    }
+
+    private void undoMove() {
+        if (!game.undoLastMove()) {
+            statusLabel.setText("Nada a desfazer!");
+            return;
+        }
+        // Contra a IA, desfaz também o lance do humano para devolver a vez a ele
+        if (isAiTurn()) game.undoLastMove();
+        updateBoardDisplay();
+        updateMoveHistory();
+        updateTurnLabel();
+        statusLabel.setText("Último movimento desfeito.");
+        scheduleAiMove();
     }
 
     private JButton createModernButton(String text) {
@@ -215,13 +207,8 @@ public class ChessGUI extends JFrame {
                 squares[row][col].setBorder(BorderFactory.createEmptyBorder());
                 squares[row][col].setFocusPainted(false);
                 squares[row][col].setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 10));
-                squares[row][col].setHorizontalAlignment(SwingConstants.LEFT);
-                squares[row][col].setVerticalAlignment(SwingConstants.TOP);
                 final int r = row;
                 final int c = col;
-
-                String label = String.valueOf((char)('a' + col)) + (8 - row);
-                squares[row][col].setText("<html><span style='font-size:10px; color:gray;'>" + label + "</span></html>");
 
                 squares[row][col].addMouseListener(new MouseAdapter() {
                     @Override
@@ -253,7 +240,10 @@ public class ChessGUI extends JFrame {
                 String path = "/" + key + ".png";
                 java.net.URL imgURL = getClass().getResource(path);
                 if (imgURL != null) {
-                    pieceIcons.put(key, new ImageIcon(imgURL));
+                    // As imagens originais são muito maiores que a casa do tabuleiro
+                    Image scaled = new ImageIcon(imgURL).getImage()
+                            .getScaledInstance(ICON_SIZE, ICON_SIZE, Image.SCALE_SMOOTH);
+                    pieceIcons.put(key, new ImageIcon(scaled));
                 } else {
                     System.err.println("Imagem não encontrada: " + path);
                 }
@@ -282,10 +272,14 @@ public class ChessGUI extends JFrame {
                 if (piece == null) {
                     squares[row][col].setText("<html><span style='font-size:10px; color:gray;'>" + label + "</span></html>");
                     squares[row][col].setIcon(null);
+                    squares[row][col].setHorizontalAlignment(SwingConstants.LEFT);
+                    squares[row][col].setVerticalAlignment(SwingConstants.TOP);
                 } else {
                     String key = getPieceIconKey(piece);
                     squares[row][col].setIcon(pieceIcons.get(key));
                     squares[row][col].setText("");
+                    squares[row][col].setHorizontalAlignment(SwingConstants.CENTER);
+                    squares[row][col].setVerticalAlignment(SwingConstants.CENTER);
                 }
                 squares[row][col].setBorder(BorderFactory.createEmptyBorder());
             }
@@ -303,90 +297,87 @@ public class ChessGUI extends JFrame {
         moveHistoryArea.setText(sb.toString());
     }
 
+    private void updateTurnLabel() {
+        turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
+    }
+
+    private boolean isAiTurn() {
+        return playAgainstAI && game.isWhiteTurn() == aiPlaysWhite;
+    }
+
     private void handleSquareClick(int row, int col) {
+        if (game.isGameOver() || isAiTurn()) return;
+
         Position position = new Position(row, col);
-        if (game.getSelectedPiece() == null) {
+        Piece selectedPiece = game.getSelectedPiece();
+        Piece clickedPiece = game.getBoard().getPieceAt(position);
+        clearHighlights();
+
+        if (selectedPiece != null && selectedPiece.getPosition().equals(position)) {
+            game.selectPiece(null);
+            statusLabel.setText("Seleção desfeita.");
+        } else if (clickedPiece != null && clickedPiece.isWhite() == game.isWhiteTurn()) {
             game.selectPiece(position);
-            if (game.getSelectedPiece() != null) {
-                squares[row][col].setBorder(BorderFactory.createLineBorder(new Color(51, 182, 222), 3));
-                for (Position pos : game.getSelectedPiece().getPossibleMoves()) {
-                    squares[pos.getRow()][pos.getColumn()].setBorder(
-                            BorderFactory.createLineBorder(new Color(90, 252, 108), 3));
-                }
-                statusLabel.setText("Peça selecionada: " + game.getSelectedPiece().getSymbol() + " (" +
-                        (game.getSelectedPiece().isWhite() ? "Branca" : "Preta") + ")");
-            }
-        } else {
-            Piece selectedPiece = game.getSelectedPiece();
-            clearHighlights();
-            if (selectedPiece.getPosition().equals(position)) {
-                game.selectPiece(null);
-                statusLabel.setText("Seleção desfeita.");
-            } else if (game.getBoard().getPieceAt(position) != null &&
-                    selectedPiece.isWhite() == game.getBoard().getPieceAt(position).isWhite()) {
-                game.selectPiece(position);
-                if (game.getSelectedPiece() != null) {
-                    squares[row][col].setBorder(BorderFactory.createLineBorder(new Color(51, 182, 222), 3));
-                    for (Position pos : game.getSelectedPiece().getPossibleMoves()) {
-                        squares[pos.getRow()][pos.getColumn()].setBorder(
-                                BorderFactory.createLineBorder(new Color(90, 252, 108), 3));
-                    }
-                }
-                statusLabel.setText("Nova peça selecionada: " + game.getSelectedPiece().getSymbol() + " (" +
-                        (game.getSelectedPiece().isWhite() ? "Branca" : "Preta") + ")");
-            } else {
-                boolean moveSuccessful = game.movePiece(position);
-                if (moveSuccessful) {
+            highlightSelection();
+            statusLabel.setText("Peça selecionada: " + clickedPiece.getSymbol() + " (" +
+                    (clickedPiece.isWhite() ? "Branca" : "Preta") + ")");
+        } else if (selectedPiece != null) {
+            if (game.movePiece(position)) {
+                if (game.hasPendingPromotion()) {
                     updateBoardDisplay();
-                    updateMoveHistory();
-                    turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
-                    statusLabel.setText("Movimento realizado.");
-
-                    if (game.isInCheck(game.isWhiteTurn())) {
-                        JOptionPane.showMessageDialog(this, "Xeque!", "Aviso", JOptionPane.WARNING_MESSAGE);
-                        statusLabel.setText("Xeque!");
-                    }
-
-                    if (game.hasPendingPromotion()) {
-                        promotePawn(game.getPendingPromotionPosition());
-                        updateBoardDisplay();
-                        updateMoveHistory();
-                    }
-
-                    if (playAgainstAI && game.isWhiteTurn() == aiPlaysWhite && !game.isGameOver()) {
-                        Timer timer = new Timer(500, e -> {
-                            ai.makeMove();
-                            updateBoardDisplay();
-                            updateMoveHistory();
-                            turnLabel.setText("Turno: " + (game.isWhiteTurn() ? "Brancas" : "Pretas"));
-                            if (game.isInCheck(game.isWhiteTurn())) {
-                                JOptionPane.showMessageDialog(this, "Xeque!", "Aviso", JOptionPane.WARNING_MESSAGE);
-                                statusLabel.setText("Xeque!");
-                            }
-                            if (game.hasPendingPromotion()) {
-                                promotePawn(game.getPendingPromotionPosition());
-                                updateBoardDisplay();
-                                updateMoveHistory();
-                            }
-                            if (game.isGameOver()) {
-                                String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                                statusLabel.setText("Jogo terminado. " + winner + " vencem!");
-                                JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
-                            }
-                        });
-                        timer.setRepeats(false);
-                        timer.start();
-                    }
-                    if (game.isGameOver()) {
-                        String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
-                        statusLabel.setText("Jogo terminado. " + winner + " vencem!");
-                        JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
-                    }
-                } else {
-                    statusLabel.setText("Movimento inválido. Tente novamente.");
+                    promotePawn(game.getPendingPromotionPosition());
                 }
+                statusLabel.setText("Movimento realizado.");
+                afterMove();
+                scheduleAiMove();
+            } else {
+                highlightSelection();
+                statusLabel.setText("Movimento inválido. Tente novamente.");
             }
         }
+    }
+
+    private void highlightSelection() {
+        Piece selectedPiece = game.getSelectedPiece();
+        if (selectedPiece == null) return;
+        Position from = selectedPiece.getPosition();
+        squares[from.getRow()][from.getColumn()].setBorder(
+                BorderFactory.createLineBorder(new Color(51, 182, 222), 3));
+        for (Position pos : game.getLegalMoves(selectedPiece)) {
+            squares[pos.getRow()][pos.getColumn()].setBorder(
+                    BorderFactory.createLineBorder(new Color(90, 252, 108), 3));
+        }
+    }
+
+    // Atualiza a tela e avisa sobre xeque, xeque-mate ou empate
+    private void afterMove() {
+        updateBoardDisplay();
+        updateMoveHistory();
+        updateTurnLabel();
+        if (game.isCheckmate()) {
+            String winner = game.isWhiteTurn() ? "Pretas" : "Brancas";
+            statusLabel.setText("Jogo terminado. " + winner + " vencem!");
+            JOptionPane.showMessageDialog(this, winner + " vencem! Xeque-mate.");
+        } else if (game.isDraw()) {
+            statusLabel.setText("Jogo terminado. Empate: " + game.getDrawReason() + ".");
+            JOptionPane.showMessageDialog(this, "Empate! " + game.getDrawReason() + ".");
+        } else if (game.isInCheck(game.isWhiteTurn())) {
+            statusLabel.setText("Xeque!");
+            JOptionPane.showMessageDialog(this, "Xeque!", "Aviso", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void scheduleAiMove() {
+        if (!isAiTurn() || game.isGameOver()) return;
+        final Game scheduledGame = game;
+        Timer timer = new Timer(500, e -> {
+            // Ignora se a partida foi reiniciada ou o lance desfeito durante a espera
+            if (game != scheduledGame || !isAiTurn() || game.isGameOver()) return;
+            ai.makeMove();
+            afterMove();
+        });
+        timer.setRepeats(false);
+        timer.start();
     }
 
     private void promotePawn(Position pawnPos) {

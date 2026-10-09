@@ -28,6 +28,11 @@ public class Position {
     }
 
     @Override
+    public int hashCode() {
+        return 8 * row + column;
+    }
+
+    @Override
     public String toString() {
         return (char)('a' + column) + "" + (8 - row);
     }

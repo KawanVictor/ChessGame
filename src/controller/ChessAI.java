@@ -10,6 +10,8 @@ import model.pieces.Piece;
 
 public class ChessAI {
     public enum Difficulty { RANDOM, MINIMAX }
+    private static final int INFINITY = 1000000;
+    private static final int MATE_VALUE = 100000;
     private Game game;
     private Random random;
     private Difficulty difficulty;
@@ -29,101 +31,61 @@ public class ChessAI {
     }
 
     public void makeMove() {
+        List<Move> possibleMoves = game.getAllLegalMoves();
+        if (possibleMoves.isEmpty()) return;
+
+        Move selectedMove;
         if (difficulty == Difficulty.MINIMAX) {
-            Move bestMove = findBestMove(2); // profundidade 2 (ajuste para mais dificuldade)
-            if (bestMove != null) {
-                game.selectPiece(bestMove.getFrom());
-                game.movePiece(bestMove.getTo());
-            }
+            selectedMove = findBestMove(possibleMoves, 2); // profundidade 2 (ajuste para mais dificuldade)
         } else { // IA aleatória
-            List<Move> possibleMoves = getAllPossibleMoves();
-            if (possibleMoves.isEmpty()) return;
-            Move selectedMove = possibleMoves.get(random.nextInt(possibleMoves.size()));
-            game.selectPiece(selectedMove.getFrom());
-            game.movePiece(selectedMove.getTo());
+            selectedMove = possibleMoves.get(random.nextInt(possibleMoves.size()));
+        }
+        game.selectPiece(selectedMove.getFrom());
+        game.movePiece(selectedMove.getTo());
+        // A IA sempre promove a rainha
+        if (game.hasPendingPromotion()) {
+            game.promotePawnAt(game.getPendingPromotionPosition(), "rainha");
         }
     }
 
-    private Move findBestMove(int depth) {
-        List<Move> possibleMoves = getAllPossibleMoves();
-        Move bestMove = null;
-        int bestValue = Integer.MIN_VALUE;
+    private Move findBestMove(List<Move> possibleMoves, int depth) {
+        List<Move> bestMoves = new ArrayList<>();
+        int bestValue = -INFINITY;
         for (Move move : possibleMoves) {
-            Piece piece = game.getBoard().getPieceAt(move.getFrom());
-            Piece capturedPiece = game.getBoard().getPieceAt(move.getTo());
-            game.getBoard().removePiece(move.getFrom());
-            game.getBoard().placePiece(piece, move.getTo());
-
-            int moveValue = -minimax(depth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
-
-            game.getBoard().removePiece(move.getTo());
-            game.getBoard().placePiece(piece, move.getFrom());
-            if (capturedPiece != null) {
-                game.getBoard().placePiece(capturedPiece, move.getTo());
-            }
+            game.simulateMove(move);
+            int moveValue = -minimax(depth - 1, -INFINITY, INFINITY);
+            game.undoSimulatedMove();
 
             if (moveValue > bestValue) {
                 bestValue = moveValue;
-                bestMove = move;
+                bestMoves.clear();
             }
+            if (moveValue == bestValue) bestMoves.add(move);
         }
-        return bestMove;
+        // Sorteia entre os lances de mesmo valor para não jogar sempre igual
+        return bestMoves.get(random.nextInt(bestMoves.size()));
     }
 
-    private int minimax(int depth, int alpha, int beta, boolean isMaximizing) {
-        if (depth == 0) return evaluateBoard();
-        List<Move> possibleMoves = getAllPossibleMoves();
+    // Minimax na forma negamax com poda alfa-beta: o valor é sempre do ponto de vista de quem joga
+    private int minimax(int depth, int alpha, int beta) {
+        List<Move> possibleMoves = game.getAllLegalMoves();
         if (possibleMoves.isEmpty()) {
-            if (game.isInCheck(game.isWhiteTurn())) {
-                return isMaximizing ? -10000 : 10000;
-            } else {
-                return 0;
-            }
+            // Xeque-mate (quanto mais cedo, pior) ou afogamento
+            return game.isInCheck(game.isWhiteTurn()) ? -MATE_VALUE - depth : 0;
         }
+        if (depth == 0) return evaluateBoard();
 
-        if (isMaximizing) {
-            int maxEval = Integer.MIN_VALUE;
-            for (Move move : possibleMoves) {
-                Piece piece = game.getBoard().getPieceAt(move.getFrom());
-                Piece capturedPiece = game.getBoard().getPieceAt(move.getTo());
-                game.getBoard().removePiece(move.getFrom());
-                game.getBoard().placePiece(piece, move.getTo());
+        int bestValue = -INFINITY;
+        for (Move move : possibleMoves) {
+            game.simulateMove(move);
+            int eval = -minimax(depth - 1, -beta, -alpha);
+            game.undoSimulatedMove();
 
-                int eval = minimax(depth - 1, alpha, beta, false);
-
-                game.getBoard().removePiece(move.getTo());
-                game.getBoard().placePiece(piece, move.getFrom());
-                if (capturedPiece != null) {
-                    game.getBoard().placePiece(capturedPiece, move.getTo());
-                }
-
-                maxEval = Math.max(maxEval, eval);
-                alpha = Math.max(alpha, eval);
-                if (beta <= alpha) break;
-            }
-            return maxEval;
-        } else {
-            int minEval = Integer.MAX_VALUE;
-            for (Move move : possibleMoves) {
-                Piece piece = game.getBoard().getPieceAt(move.getFrom());
-                Piece capturedPiece = game.getBoard().getPieceAt(move.getTo());
-                game.getBoard().removePiece(move.getFrom());
-                game.getBoard().placePiece(piece, move.getTo());
-
-                int eval = minimax(depth - 1, alpha, beta, true);
-
-                game.getBoard().removePiece(move.getTo());
-                game.getBoard().placePiece(piece, move.getFrom());
-                if (capturedPiece != null) {
-                    game.getBoard().placePiece(capturedPiece, move.getTo());
-                }
-
-                minEval = Math.min(minEval, eval);
-                beta = Math.min(beta, eval);
-                if (beta <= alpha) break;
-            }
-            return minEval;
+            bestValue = Math.max(bestValue, eval);
+            alpha = Math.max(alpha, eval);
+            if (beta <= alpha) break;
         }
+        return bestValue;
     }
 
     private int evaluateBoard() {
@@ -155,24 +117,5 @@ public class ChessAI {
             case "K": return 10000;
             default: return 0;
         }
-    }
-
-    private List<Move> getAllPossibleMoves() {
-        List<Move> moves = new ArrayList<>();
-        boolean isWhite = game.isWhiteTurn();
-        for (int row = 0; row < 8; row++) {
-            for (int col = 0; col < 8; col++) {
-                Position pos = new Position(row, col);
-                Piece piece = game.getBoard().getPieceAt(pos);
-                if (piece != null && piece.isWhite() == isWhite) {
-                    for (Position movePos : piece.getPossibleMoves()) {
-                        if (!game.moveCausesCheck(piece, movePos)) {
-                            moves.add(new Move(pos, movePos, piece, game.getBoard().getPieceAt(movePos)));
-                        }
-                    }
-                }
-            }
-        }
-        return moves;
     }
 }

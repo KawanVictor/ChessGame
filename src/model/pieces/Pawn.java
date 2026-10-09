@@ -42,5 +42,12 @@ public class Pawn extends Piece {
     }
 
     @Override
+    public boolean attacks(Position target) {
+        int direction = isWhite ? -1 : 1;
+        return target.getRow() == position.getRow() + direction
+                && Math.abs(target.getColumn() - position.getColumn()) == 1;
+    }
+
+    @Override
     public String getSymbol() { return "P"; }
 }
