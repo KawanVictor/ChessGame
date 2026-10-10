@@ -1,21 +1,20 @@
-# Projeto: Sistema de Xadrez em Java
+# Sistema de Xadrez em Java
 
-Aluno: Kawan Victor Cavalcante
+Jogo de xadrez com interface gráfica em Swing, regras oficiais e adversário controlado por IA.
 
-Curso: Análise e Desenvolvimento de Sistemas
+![Partida em andamento, com o bispo selecionado e seus lances legais destacados](docs/screenshot.png)
 
-Instituição: Faculdade Unicesumar
-
-Matéria: Programação Orientada a Objetos
-
-Professora: Thayse Duarte de Oliveira
+*Partida em andamento: o bispo selecionado aparece com borda azul, seus lances legais com borda verde, e o histórico à direita registra os lances, incluindo o roque (`O-O`).*
 
 # Descrição do Projeto
 
 Este projeto consiste em um sistema de xadrez com interface gráfica desenvolvido como trabalho prático para a disciplina de Programação Orientada a Objetos.
 O sistema permite partidas entre dois jogadores ou jogador contra a IA (níveis aleatório e minimax), aplica as regras oficiais de movimentação (incluindo roque, en passant e promoção), detecta xeque, xeque-mate e empates, e mantém histórico de movimentos com opção de desfazer.
 
-![Partida em andamento, com o bispo selecionado e seus lances legais destacados](docs/screenshot.png)
+- **Aluno:** Kawan Victor Cavalcante
+- **Curso:** Análise e Desenvolvimento de Sistemas
+- **Instituição:** Faculdade Unicesumar
+- **Matéria:** Programação Orientada a Objetos
 
 # Tecnologias e Ferramentas Utilizadas
 
